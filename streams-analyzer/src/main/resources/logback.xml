@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration debug="true" scan="true">
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="Analyzer" class="ch.qos.logback.core.FileAppender">
+        <file>logs/analyzer.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="Printer" class="ch.qos.logback.core.FileAppender">
+        <file>logs/print.log</file>
+        <encoder>
+            <pattern>%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="Alarm" class="ch.qos.logback.core.FileAppender">
+        <file>logs/alarm.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="Abnormal" class="ch.qos.logback.core.FileAppender">
+        <file>logs/abnormal.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="com.trafficanalyzer" level="INFO">
+        <appender-ref ref="Analyzer" />
+    </logger>
+
+    <logger name="printer" level="INFO">
+        <appender-ref ref="Printer" />
+    </logger>
+
+    <logger name="alarm" level="INFO">
+        <appender-ref ref="Alarm" />
+    </logger>
+
+    <logger name="abnormal" level="INFO">
+        <appender-ref ref="Abnormal" />
+    </logger>
+
+    <root level="WARN">
+        <appender-ref ref="STDOUT" />
+    </root>
+</configuration>
