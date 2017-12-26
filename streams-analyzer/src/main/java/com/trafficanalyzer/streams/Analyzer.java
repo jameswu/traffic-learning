@@ -3,9 +3,9 @@ package com.trafficanalyzer.streams;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -33,7 +33,7 @@ import org.apache.kafka.streams.state.WindowStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.trafficanalyzer.learning.MLModel;
+import com.trafficanalyzer.learning.Predictor;
 import com.trafficanalyzer.streams.entity.JsonPOJOSerde;
 import com.trafficanalyzer.streams.entity.PayloadCount;
 import com.trafficanalyzer.streams.entity.TxLog;
@@ -48,14 +48,13 @@ public class Analyzer {
     private static final float max_rate = 2;
     private static Logger logger = LoggerFactory.getLogger(Analyzer.class);
     private static Logger alarmLogger = LoggerFactory.getLogger("alarm");
-    private static Logger abnormalLogger = LoggerFactory.getLogger("abnormal");
 
     private static ScheduledExecutorService threadPool = Executors.newScheduledThreadPool(2);
 
     private static Config config;
 
     private static KafkaStreams streams;
-    private static MLModel model;
+    private static Predictor model;
 
     public static void main(String[] args) throws IOException {
         if (args.length != 2) {
@@ -64,7 +63,7 @@ public class Analyzer {
         }
 
         final String modelDir = args[1];
-        model = new MLModel(modelDir);
+        model = new Predictor(modelDir);
         model.init();
 
         final Properties configProperties = new Properties();
@@ -176,7 +175,8 @@ public class Analyzer {
                 });
 
                 float totalCount = 0;
-                final List<PayloadCount> counts = new ArrayList<PayloadCount>();
+                final Map<PayloadCount, Window> counts = new HashMap<PayloadCount, Window>();
+
                 while (allProportions.hasNext()) {
                     final KeyValue<Windowed<String>, PayloadCount> keyValue = allProportions.next();
                     final Window window = keyValue.key.window();
@@ -197,13 +197,13 @@ public class Analyzer {
                     if (value.getTotalCount() > totalCount) {
                         totalCount = value.getTotalCount();
                     }
-                    counts.add(value);
+                    counts.put(value, window);
                 }
 
                 final float max = normalizeRate(totalCount / 60);
-                counts.forEach((count) -> {
+                counts.forEach((count, window) -> {
                     if (!model.predict(count, max)) {
-                        raiseAbnormal("device[{}] is detected as abnormal", count.getDeviceId());
+                        raiseAlarm("device[{}] is detected abnormal in [{}]", count.getDeviceId(), toString(window));
                     }
                 });
             } catch (Exception e) {
@@ -218,10 +218,6 @@ public class Analyzer {
 
     private static void raiseAlarm(String msg, Object... objects) {
         alarmLogger.info("alarm: " + msg, objects);
-    }
-
-    private static void raiseAbnormal(String msg, Object... objects) {
-        abnormalLogger.info("abnormal detected: " + msg, objects);
     }
 
     private static String toString(Window window) {

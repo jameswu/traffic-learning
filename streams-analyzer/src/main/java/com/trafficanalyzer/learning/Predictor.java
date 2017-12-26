@@ -9,9 +9,9 @@ import org.tensorflow.Tensors;
 
 import com.trafficanalyzer.streams.entity.PayloadCount;
 
-public class MLModel {
+public class Predictor {
 
-    private static Logger logger = LoggerFactory.getLogger(MLModel.class);
+    private static Logger logger = LoggerFactory.getLogger(Predictor.class);
 
     private static float LEARNING_LOSS = 0.001546f;
     private static float PREDICTION_TRESHOLD = 1.5f;
@@ -24,7 +24,7 @@ public class MLModel {
         return loss <= LEARNING_LOSS * PREDICTION_TRESHOLD;
     }
 
-    public MLModel(String modelDir) {
+    public Predictor(String modelDir) {
         this.modelDir = modelDir;
     }
 
@@ -36,15 +36,16 @@ public class MLModel {
         float[][] vector = { { (float) count.getMtCount() / count.getTotalCount(),
                 (float) count.getMoCount() / count.getTotalCount(),
                 (float) count.getErrorCount() / count.getTotalCount(), max } };
-        return predict(vector);
+        final float result = predict(vector);
+        logger.debug("device[{}] predict result[{}]", count.getDeviceId(), result);
+        return determine(result);
     }
 
-    private boolean predict(float[][] vector) {
+    private float predict(float[][] vector) {
         final Runner runner = modelBundle.session().runner();
         final Tensor<Float> input = Tensors.create(vector);
         final Tensor<?> result = runner.feed("Input/Placeholder", input).fetch("accuracy/Mean").run().get(0);
-        logger.debug("{}", result.floatValue());
-        return determine(result.floatValue());
+        return result.floatValue();
     }
 
     public static void main(final String[] args) throws Exception {
@@ -56,7 +57,7 @@ public class MLModel {
 
         final String modelDir = args[0];
 
-        final MLModel model = new MLModel(modelDir);
+        final Predictor model = new Predictor(modelDir);
         model.init();
 
         // Prepare input
