@@ -4,17 +4,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.tensorflow.SavedModelBundle;
 import org.tensorflow.Session.Runner;
-
-import com.trafficanalyzer.streams.entity.PayloadCount;
-
 import org.tensorflow.Tensor;
 import org.tensorflow.Tensors;
+
+import com.trafficanalyzer.streams.entity.PayloadCount;
 
 public class MLModel {
 
     private static Logger logger = LoggerFactory.getLogger(MLModel.class);
 
-    private static float LEARNING_LOSS = 0.000262f;
+    private static float LEARNING_LOSS = 0.001546f;
     private static float PREDICTION_TRESHOLD = 1.5f;
 
     private String modelDir;
@@ -61,9 +60,9 @@ public class MLModel {
         model.init();
 
         // Prepare input
-        float[][] vector1 = { { 0.66885245901639345f, 0.33114754098360655f, 0.0f, 0.11222780569514237f } };
-        float[][] vector2 = { { 0.66612244897959183f, 0.33387755102040817f, 0.0f, 0.11222780569514237f } };
-        float[][] vector3 = { { 0.6810007818608288f, 0.3189992181391712f, 0.0f, 0.59798994974874364f } };
+        float[][] vector1 = { { 0.50049800796812749f, 0.49950199203187251f, 0.0f, 0.13157894736842105f } };
+        float[][] vector2 = { { 0.50346534653465347f, 0.49653465346534653f, 0.0f, 0.22807017543859651f } };
+        float[][] vector3 = { { 0.51522474625422909f, 0.48477525374577091f, 0.0f, 0.65789473684210531f } };
 
         logger.info("vector1 is normal? {}", model.predict(vector1));
         logger.info("vector2 is normal? {}", model.predict(vector2));

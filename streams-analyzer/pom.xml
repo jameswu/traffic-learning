@@ -107,7 +107,7 @@
                         <artifactId>exec-maven-plugin</artifactId>
                         <version>1.6.0</version>
                         <configuration>
-                            <mainClass>com.trafficanalyzer.leaning.MLModel</mainClass>
+                            <mainClass>com.trafficanalyzer.learning.MLModel</mainClass>
                             <addResourcesToClasspath>true</addResourcesToClasspath>
                             <arguments>
                                 <argument>model/AutoEncoder</argument>

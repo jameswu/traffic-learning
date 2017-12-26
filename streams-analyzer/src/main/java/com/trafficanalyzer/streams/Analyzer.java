@@ -44,6 +44,8 @@ import com.trafficanalyzer.streams.entity.TxLog;
  */
 public class Analyzer {
 
+    private static final float min_rate = 0.1f;
+    private static final float max_rate = 2;
     private static Logger logger = LoggerFactory.getLogger(Analyzer.class);
     private static Logger alarmLogger = LoggerFactory.getLogger("alarm");
     private static Logger abnormalLogger = LoggerFactory.getLogger("abnormal");
@@ -127,10 +129,10 @@ public class Analyzer {
         if (value.getPayloadSize() > config.getBigSizeThreshod()) {
             payloadCount.increaseBigCount();
         }
-        if ("MO".equals(value.getMessageType())) {
+        if ("NIDD-MO".equals(value.getMessageType())) {
             payloadCount.increaseMoCount();
         }
-        if ("MT".equals(value.getMessageType())) {
+        if ("NIDD-MT".equals(value.getMessageType())) {
             payloadCount.increaseMtCount();
         }
         if ("FAILED".equals(value.getResult())) {
@@ -157,8 +159,8 @@ public class Analyzer {
                 final long timeFrom = now - config.getTimeWindowStepInMs() - config.getTimeWindowInMs();
                 final long timeTo = now - config.getTimeWindowInMs();
 
-                final KeyValueIterator<Windowed<String>, Long> allUriCounts = uriCountStore.fetch("http://host-01/path",
-                        "http://host-02/path", timeFrom, timeTo);
+                final KeyValueIterator<Windowed<String>, Long> allUriCounts = uriCountStore
+                        .fetch("coap://10.255.8.101/mt", "coap://10.255.8.102/mt", timeFrom, timeTo);
                 final KeyValueIterator<Windowed<String>, PayloadCount> allProportions = proportionStore.fetch("01",
                         "50", timeFrom, timeTo);
 
@@ -182,9 +184,8 @@ public class Analyzer {
                     final PayloadCount value = keyValue.value;
 
                     if (value.getBigPayloadProportion() >= config.getProportionThreshod()) {
-                        raiseAlarm("device[{}] big size traffic rate [{}] reach threshold[{}] in [{}]", key,
-                                value.proportionText(),
-                                config.getProportionThreshod(), toString(window));
+                        raiseAlarm("device[{}] big size payload rate [{}] reach threshold[{}] in [{}]", key,
+                                value.proportionText(), config.getProportionThreshod(), toString(window));
                     }
 
                     //                    final float tps = (float) value.getTotalCount() / config.getTimeWindowInSecond();
@@ -199,7 +200,7 @@ public class Analyzer {
                     counts.add(value);
                 }
 
-                final float max = totalCount / 60;
+                final float max = normalizeRate(totalCount / 60);
                 counts.forEach((count) -> {
                     if (!model.predict(count, max)) {
                         raiseAbnormal("device[{}] is detected as abnormal", count.getDeviceId());
@@ -209,6 +210,10 @@ public class Analyzer {
                 logger.debug(e.getMessage());
             }
         }, 0, config.getTimeWindowStepInMs(), TimeUnit.MILLISECONDS);
+    }
+
+    private static float normalizeRate(float rate) {
+        return (rate - min_rate) / (max_rate - min_rate);
     }
 
     private static void raiseAlarm(String msg, Object... objects) {

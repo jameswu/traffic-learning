@@ -29,10 +29,10 @@ public class Generator {
         config.load(new FileInputStream(args[0]));
 
         final Serde<String> stringSerde = Serdes.String();
-        final JsonPOJOSerde<TxLog> authnRecordSerde = new JsonPOJOSerde<TxLog>(TxLog.class);
+        final JsonPOJOSerde<TxLog> txLogSerde = new JsonPOJOSerde<TxLog>(TxLog.class);
 
         final KafkaProducer<String, TxLog> producer = new KafkaProducer<String, TxLog>(config, stringSerde.serializer(),
-                authnRecordSerde.serializer());
+                txLogSerde.serializer());
 
         while (running) {
 
@@ -56,16 +56,16 @@ public class Generator {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             running = false;
             producer.close();
-            authnRecordSerde.close();
+            txLogSerde.close();
         }));
     }
 
     private static String genUri() {
-        return formatNumber("http://host-00/path", random.nextInt(2) + 1);
+        return "coap://10.255.8.1" + formatNumber("00/mt", random.nextInt(2) + 1);
     }
 
     private static String genTxType() {
-        return random.nextInt(2) == 0 ? "MO" : "MT";
+        return random.nextInt(2) == 0 ? "NIDD-MO" : "NIDD-MT";
     }
 
     private static int genSize(String deviceId) {
