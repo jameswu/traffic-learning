@@ -37,7 +37,15 @@ public class Predictor {
                 (float) count.getMoCount() / count.getTotalCount(),
                 (float) count.getErrorCount() / count.getTotalCount(), max } };
         final float result = predict(vector);
-        logger.debug("device[{}] predict result[{}]", count.getDeviceId(), result);
+        logger.debug("device[{}]: MT[{}], MO[{}], max[{}], predict result[{}]", count.getDeviceId(), count.getMtCount(),
+                count.getMoCount(), max, result);
+        return determine(result);
+    }
+
+    public boolean predict(float mtRate, float moRate, float errorRate, float max) {
+        float[][] vector = { { mtRate, moRate, errorRate, max } };
+        final float result = predict(vector);
+        logger.debug("MT[{}], MO[{}], max[{}], predict result[{}]", mtRate, moRate, max, result);
         return determine(result);
     }
 
@@ -51,7 +59,7 @@ public class Predictor {
     public static void main(final String[] args) throws Exception {
 
         if (args.length != 1) {
-            System.out.println("usage: test-model [model]");
+            System.out.println("usage: Predictor [model]");
             return;
         }
 
@@ -65,9 +73,12 @@ public class Predictor {
         float[][] vector2 = { { 0.50346534653465347f, 0.49653465346534653f, 0.0f, 0.22807017543859651f } };
         float[][] vector3 = { { 0.51522474625422909f, 0.48477525374577091f, 0.0f, 0.65789473684210531f } };
 
-        logger.info("vector1 is normal? {}", model.predict(vector1));
-        logger.info("vector2 is normal? {}", model.predict(vector2));
-        logger.info("vector3 is normal? {}", model.predict(vector3));
+        final float result1 = model.predict(vector1);
+        logger.info("vector1 result[{}] is normal? {}", result1, model.determine(result1));
+        final float result2 = model.predict(vector2);
+        logger.info("vector2 result[{}] is normal? {}", result2, model.determine(result2));
+        final float result3 = model.predict(vector3);
+        logger.info("vector3 result[{}] is normal? {}", result3, model.determine(result3));
     }
 
     public void close() {

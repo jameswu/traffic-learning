@@ -4,8 +4,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -44,9 +42,11 @@ import com.trafficanalyzer.streams.entity.TxLog;
  */
 public class Analyzer {
 
-    private static final float min_rate = 0.1f;
-    private static final float max_rate = 2;
+    private static final float MIN_RATE = 0.1f;
+    private static final float MAX_RATE = 2;
+
     private static Logger logger = LoggerFactory.getLogger(Analyzer.class);
+    private static Logger timerLogger = LoggerFactory.getLogger("timer");
     private static Logger alarmLogger = LoggerFactory.getLogger("alarm");
 
     private static ScheduledExecutorService threadPool = Executors.newScheduledThreadPool(2);
@@ -148,7 +148,7 @@ public class Analyzer {
                 final ReadOnlyWindowStore<String, PayloadCount> proportionStore = streams.store("Proportion",
                         QueryableStoreTypes.windowStore());
                 if (proportionStore == null) {
-                    logger.debug("state store is not available yet.");
+                    timerLogger.debug("state store is not available yet.");
                     return;
                 }
                 final ReadOnlyWindowStore<String, Long> uriCountStore = streams.store("URICount",
@@ -168,52 +168,65 @@ public class Analyzer {
                     final String key = keyValue.key.key();
                     final Long value = keyValue.value;
 
-                    if (value >= config.getTpwThreshod()) {
-                        raiseAlarm("uri[{}] tpm[{}] reach threshold[{}] in [{}]", key, value, config.getTpwThreshod(),
+                    final long tpm = value / config.getTimeWindowInMinute();
+                    if (tpm >= config.getTpmThreshod()) {
+                        raiseAlarm("uri[{}] tpm[{}] reach threshold[{}] in [{}]", key, tpm, config.getTpmThreshod(),
                                 toString(window));
                     }
                 });
 
                 float totalCount = 0;
-                final Map<PayloadCount, Window> counts = new HashMap<PayloadCount, Window>();
+                float moCountMax = 0;
+                float mtCount = 0;
+                float moCount = 0;
+                float errorCount = 0;
+                float bigPayload = 0;
+                Window window = null;
 
                 while (allProportions.hasNext()) {
                     final KeyValue<Windowed<String>, PayloadCount> keyValue = allProportions.next();
-                    final Window window = keyValue.key.window();
+                    window = keyValue.key.window();
                     final String key = keyValue.key.key();
                     final PayloadCount value = keyValue.value;
 
-                    if (value.getBigPayloadProportion() >= config.getProportionThreshod()) {
-                        raiseAlarm("device[{}] big size payload rate [{}] reach threshold[{}] in [{}]", key,
-                                value.proportionText(), config.getProportionThreshod(), toString(window));
+                    if (value.getMoCount() > moCountMax) {
+                        moCountMax = value.getMoCount();
                     }
 
-                    //                    final float tps = (float) value.getTotalCount() / config.getTimeWindowInSecond();
-                    //                    if (tps >= config.getTpwThreshod()) {
-                    //                        raiseAlarm("device[{}] tpm[{}] reach threshold[{}] in [{}]", key, tps, config.getTpwThreshod(),
-                    //                                toString(window));
-                    //                    }
+                    timerLogger.debug("device[{}] totalCount[{}], mtRate[{}], moRate[{}]", key, value.getTotalCount(),
+                            value.getMtCount(), value.getMoCount());
 
-                    if (value.getTotalCount() > totalCount) {
-                        totalCount = value.getTotalCount();
-                    }
-                    counts.put(value, window);
+                    totalCount += value.getTotalCount();
+                    mtCount += value.getMtCount();
+                    moCount += value.getMoCount();
+                    errorCount += value.getErrorCount();
+                    bigPayload += value.getBigCount();
                 }
 
-                final float max = normalizeRate(totalCount / 60);
-                counts.forEach((count, window) -> {
-                    if (!model.predict(count, max)) {
-                        raiseAlarm("device[{}] is detected abnormal in [{}]", count.getDeviceId(), toString(window));
-                    }
-                });
-            } catch (Exception e) {
-                logger.debug(e.getMessage());
+                final float max = normalizeRate(moCountMax / 60);
+                final float mtRate = mtCount / totalCount;
+                final float moRate = moCount / totalCount;
+                final float errorRate = errorCount / totalCount;
+                timerLogger.info("mtRate[{}], moRate[{}], errorRate[{}], normalizedMax[{}] in [{}]", mtRate, moRate,
+                        errorRate, max, toString(window));
+                if (!model.predict(mtRate, moRate, errorRate, max)) {
+                    raiseAlarm("abnormal mo pattern detected in [{}]", toString(window));
+                }
+
+                final float bigPayloadRate = bigPayload / totalCount;
+                timerLogger.info("totalCount[{}], bigPayload[{}] in [{}]", totalCount, bigPayload, toString(window));
+                if (bigPayloadRate >= config.getProportionThreshod()) {
+                    raiseAlarm("big payload rate [{}] reach threshold[{}] in [{}]", bigPayloadRate,
+                            config.getProportionThreshod(), toString(window));
+                }
+            } catch (Throwable e) {
+                timerLogger.debug(e.getMessage(), e);
             }
         }, 0, config.getTimeWindowStepInMs(), TimeUnit.MILLISECONDS);
     }
 
     private static float normalizeRate(float rate) {
-        return (rate - min_rate) / (max_rate - min_rate);
+        return (rate - MIN_RATE) / (MAX_RATE - MIN_RATE);
     }
 
     private static void raiseAlarm(String msg, Object... objects) {
@@ -247,6 +260,10 @@ public class Analyzer {
             return Integer.valueOf(this.properties.getProperty("time.window.in.second"));
         }
 
+        public int getTimeWindowInMinute() {
+            return this.getTimeWindowInSecond() / 60;
+        }
+
         public int getTimeWindowInMs() {
             return this.getTimeWindowInSecond() * 1000;
         }
@@ -259,8 +276,8 @@ public class Analyzer {
             return this.getTimeWindowStepInSecond() * 1000;
         }
 
-        public int getTpwThreshod() {
-            return Integer.valueOf(this.properties.getProperty("tx.per.window.threshod"));
+        public int getTpmThreshod() {
+            return Integer.valueOf(this.properties.getProperty("tx.per.minute.threshod"));
         }
     }
 }

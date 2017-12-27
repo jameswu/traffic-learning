@@ -4,6 +4,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 
 public class TxLog {
 
+    private String applicationId;
     private String deviceId;
     private String messageType;
     private String uri;
@@ -57,6 +58,14 @@ public class TxLog {
 
     public void setUri(String uri) {
         this.uri = uri;
+    }
+
+    public String getApplicationId() {
+        return applicationId;
+    }
+
+    public void setApplicationId(String applicationId) {
+        this.applicationId = applicationId;
     }
 
     @Override

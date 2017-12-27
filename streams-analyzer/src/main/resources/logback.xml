@@ -15,17 +15,17 @@
         </encoder>
     </appender>
 
-    <appender name="Predictor" class="ch.qos.logback.core.FileAppender">
-        <file>logs/predictor.log</file>
+    <appender name="Timer" class="ch.qos.logback.core.FileAppender">
+        <file>logs/timer.log</file>
         <encoder>
             <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
         </encoder>
     </appender>
 
-    <appender name="Printer" class="ch.qos.logback.core.FileAppender">
-        <file>logs/print.log</file>
+    <appender name="Predictor" class="ch.qos.logback.core.FileAppender">
+        <file>logs/predictor.log</file>
         <encoder>
-            <pattern>%msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -40,12 +40,12 @@
         <appender-ref ref="Analyzer" />
     </logger>
 
-    <logger name="com.trafficanalyzer.learning.Predictor" level="INFO">
+    <logger name="com.trafficanalyzer.learning.Predictor" level="DEBUG">
         <appender-ref ref="Predictor" />
     </logger>
 
-    <logger name="printer" level="INFO">
-        <appender-ref ref="Printer" />
+    <logger name="timer" level="INFO">
+        <appender-ref ref="Timer" />
     </logger>
 
     <logger name="alarm" level="INFO">

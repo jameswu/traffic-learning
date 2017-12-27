@@ -38,6 +38,7 @@ public class Generator {
 
             final TxLog value = new TxLog();
             final String deviceId = genDeviceId();
+            value.setApplicationId(genApplicationId());
             value.setDeviceId(deviceId);
             value.setPayloadSize(genSize(deviceId));
             value.setMessageType(genTxType());
@@ -58,6 +59,10 @@ public class Generator {
             producer.close();
             txLogSerde.close();
         }));
+    }
+
+    private static String genApplicationId() {
+        return formatNumber("00", random.nextInt(2) + 1);
     }
 
     private static String genUri() {
